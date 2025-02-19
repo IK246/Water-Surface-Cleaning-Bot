@@ -1,68 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robot Controller</title>
-    <style>
-        body { text-align: center; font-family: Arial, sans-serif; }
-        button { font-size: 18px; margin: 10px; padding: 10px 20px; }
-        video { width: 100%; max-width: 400px; border: 2px solid black; }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Water Surface Cleaning Robot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    video {
+      width: 80%;
+      max-width: 400px;
+      border: 2px solid #333;
+      margin-bottom: 20px;
+    }
+    button {
+      font-size: 16px;
+      padding: 10px 20px;
+      margin: 10px;
+    }
+    #autoModeDiv, #manualModeDiv {
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin: 10px auto;
+      width: 80%;
+      max-width: 400px;
+      display: none; /* Hidden by default */
+    }
+    #statusText {
+      font-weight: bold;
+      color: #e91e63;
+    }
+  </style>
 </head>
 <body>
 
-    <h1>ESP32-CAM Video & Robot Control</h1>
-    <video id="videoStream" autoplay></video>
-    <br>
+  <h1>Water Surface Cleaning Robot</h1>
 
+  <!-- Video Stream from ESP32-CAM -->
+  <video id="videoStream" autoplay></video><br>
+
+  <!-- Connect Bluetooth -->
+  <button onclick="connectBluetooth()">Connect Bluetooth</button><br><br>
+
+  <!-- Mode Selection -->
+  <button onclick="setAutoMode(true)">Auto Mode</button>
+  <button onclick="setAutoMode(false)">Manual Mode</button>
+
+  <!-- AUTO MODE SECTION -->
+  <div id="autoModeDiv">
+    <h2>Auto Mode Active</h2>
+    <p>The robot will automatically move toward the object if detected.</p>
+    <p>Detection Status: <span id="statusText">Unknown</span></p>
+    <p>(When the camera detects an object, it waits 5 seconds, then sends "GO".)</p>
+  </div>
+
+  <!-- MANUAL MODE SECTION -->
+  <div id="manualModeDiv">
+    <h2>Manual Controls</h2>
     <button onclick="sendCommand('F')">Forward</button>
+    <button onclick="sendCommand('B')">Backward</button>
     <button onclick="sendCommand('L')">Left</button>
     <button onclick="sendCommand('R')">Right</button>
-    <button onclick="sendCommand('B')">Backward</button>
     <button onclick="sendCommand('S')">Stop</button>
-    <br><br>
-    
-    <button onclick="connectBluetooth()">🔗 Connect to Bluetooth</button>
+  </div>
 
-    <script>
-        // Replace with your ESP32-CAM video stream URL (use ngrok if remote)
-        const videoElement = document.getElementById("videoStream");
-        videoElement.src = "http://192.168.1.X:81/stream"; // Change to your ESP32-CAM IP
+  <script>
+    // 1) Set the ESP32-CAM stream URL:
+    const videoStream = document.getElementById("videoStream");
+    // Example local IP or ngrok URL:
+    videoStream.src = "http://192.168.1.10:81/stream"; 
+    // ^^^ CHANGE THIS to your actual ESP32-CAM URL
 
-        let bluetoothDevice;
-        let bluetoothCharacteristic;
+    // 2) Variables for Bluetooth:
+    let bluetoothDevice;
+    let bluetoothCharacteristic;
 
-        async function connectBluetooth() {
-            try {
-                console.log("Requesting Bluetooth Device...");
-                bluetoothDevice = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb'] // HM-10/HC-05 UUID
-                });
+    // 3) Auto Mode Control:
+    let autoMode = false;
+    let detectionInterval = null;     // Will hold our setInterval ID
+    let lastDetectionStatus = "0";    // Track previous detection to avoid repeated commands
+    const statusText = document.getElementById("statusText");
 
-                const server = await bluetoothDevice.gatt.connect();
-                const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
-                bluetoothCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+    // 4) Connect to Bluetooth:
+    async function connectBluetooth() {
+      try {
+        // Request device that offers HM-10/HC-05 service
+        bluetoothDevice = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"]
+        });
+        const server = await bluetoothDevice.gatt.connect();
+        const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
+        bluetoothCharacteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
+        alert("Bluetooth connected!");
+      } catch (error) {
+        alert("Bluetooth connection failed: " + error);
+      }
+    }
 
-                alert("Bluetooth Connected! 🔥");
-            } catch (error) {
-                console.error("Bluetooth Connection Failed!", error);
-                alert("Failed to connect. Try again!");
+    // 5) Send a command to the robot via Bluetooth:
+    async function sendCommand(cmd) {
+      if (!bluetoothCharacteristic) {
+        alert("Bluetooth not connected!");
+        return;
+      }
+      const encoder = new TextEncoder();
+      await bluetoothCharacteristic.writeValue(encoder.encode(cmd));
+      console.log("Sent command:", cmd);
+    }
+
+    // 6) Switch between Auto Mode and Manual Mode:
+    function setAutoMode(enable) {
+      autoMode = enable;
+      document.getElementById("autoModeDiv").style.display = autoMode ? "block" : "none";
+      document.getElementById("manualModeDiv").style.display = autoMode ? "none" : "block";
+
+      if (autoMode) {
+        // Start periodically checking detection status
+        detectionInterval = setInterval(checkObjectDetection, 2000); // every 2s
+      } else {
+        // Stop checking detection
+        clearInterval(detectionInterval);
+        detectionInterval = null;
+        statusText.innerText = "N/A";
+      }
+    }
+
+    // 7) Check if ESP32-CAM detects an object:
+    async function checkObjectDetection() {
+      try {
+        // "http://<ESP32-CAM-IP>/status" should return "1" if object is detected, otherwise "0"
+        const response = await fetch("/status"); 
+        const status = await response.text(); 
+        // Update text on the webpage
+        statusText.innerText = (status === "1") ? "Object Detected" : "No Object Detected";
+
+        // If object is detected now, but wasn't detected before, trigger a 5s delay => send "GO"
+        if (status === "1" && lastDetectionStatus === "0") {
+          console.log("Object detected, scheduling command in 5 seconds...");
+          setTimeout(() => {
+            // Double-check we're still in auto mode
+            if (autoMode) {
+              sendCommand("GO");
             }
+          }, 5000);
         }
-
-        async function sendCommand(command) {
-            if (!bluetoothCharacteristic) {
-                alert("Connect to Bluetooth first!");
-                return;
-            }
-
-            let encoder = new TextEncoder();
-            await bluetoothCharacteristic.writeValue(encoder.encode(command));
-            console.log("Sent:", command);
-        }
-    </script>
-
+        lastDetectionStatus = status;
+      } catch (error) {
+        console.error("Error checking detection:", error);
+        statusText.innerText = "Error";
+      }
+    }
+  </script>
 </body>
 </html>
