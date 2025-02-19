@@ -5,6 +5,8 @@
   <title>Water Surface Cleaning Robot</title>
   <style>
     body {
+      background-color: #000;
+      color: #fff;
       font-family: Arial, sans-serif;
       text-align: center;
       margin: 20px;
@@ -12,16 +14,23 @@
     video {
       width: 80%;
       max-width: 400px;
-      border: 2px solid #333;
+      border: 2px solid #fff;
       margin-bottom: 20px;
     }
     button {
       font-size: 16px;
       padding: 10px 20px;
       margin: 10px;
+      background-color: #333;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #555;
     }
     #autoModeDiv, #manualModeDiv {
-      border: 1px solid #ccc;
+      border: 1px solid #fff;
       padding: 15px;
       margin: 10px auto;
       width: 80%;
@@ -30,7 +39,6 @@
     }
     #statusText {
       font-weight: bold;
-      color: #e91e63;
     }
   </style>
 </head>
@@ -53,7 +61,6 @@
     <h2>Auto Mode Active</h2>
     <p>The robot will automatically move toward the object if detected.</p>
     <p>Detection Status: <span id="statusText">Unknown</span></p>
-    <p>(When the camera detects an object, it waits 5 seconds, then sends "GO".)</p>
   </div>
 
   <!-- MANUAL MODE SECTION -->
@@ -119,7 +126,7 @@
 
       if (autoMode) {
         // Start periodically checking detection status
-        detectionInterval = setInterval(checkObjectDetection, 2000); // every 2s
+        detectionInterval = setInterval(checkObjectDetection, 2000); // every 2 seconds
       } else {
         // Stop checking detection
         clearInterval(detectionInterval);
