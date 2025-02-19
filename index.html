@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Controller</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        button { font-size: 18px; margin: 10px; padding: 10px 20px; }
+        video { width: 100%; max-width: 400px; border: 2px solid black; }
+    </style>
+</head>
+<body>
+
+    <h1>ESP32-CAM Video & Robot Control</h1>
+    <video id="videoStream" autoplay></video>
+    <br>
+
+    <button onclick="sendCommand('F')">Forward</button>
+    <button onclick="sendCommand('L')">Left</button>
+    <button onclick="sendCommand('R')">Right</button>
+    <button onclick="sendCommand('B')">Backward</button>
+    <button onclick="sendCommand('S')">Stop</button>
+    <br><br>
+    
+    <button onclick="connectBluetooth()">🔗 Connect to Bluetooth</button>
+
+    <script>
+        // Replace with your ESP32-CAM video stream URL (use ngrok if remote)
+        const videoElement = document.getElementById("videoStream");
+        videoElement.src = "http://192.168.1.X:81/stream"; // Change to your ESP32-CAM IP
+
+        let bluetoothDevice;
+        let bluetoothCharacteristic;
+
+        async function connectBluetooth() {
+            try {
+                console.log("Requesting Bluetooth Device...");
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb'] // HM-10/HC-05 UUID
+                });
+
+                const server = await bluetoothDevice.gatt.connect();
+                const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+                bluetoothCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+
+                alert("Bluetooth Connected! 🔥");
+            } catch (error) {
+                console.error("Bluetooth Connection Failed!", error);
+                alert("Failed to connect. Try again!");
+            }
+        }
+
+        async function sendCommand(command) {
+            if (!bluetoothCharacteristic) {
+                alert("Connect to Bluetooth first!");
+                return;
+            }
+
+            let encoder = new TextEncoder();
+            await bluetoothCharacteristic.writeValue(encoder.encode(command));
+            console.log("Sent:", command);
+        }
+    </script>
+
+</body>
+</html>
