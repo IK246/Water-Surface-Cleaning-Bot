@@ -35,7 +35,7 @@
       margin: 10px auto;
       width: 80%;
       max-width: 400px;
-      display: none; /* Hidden by default */
+      display: none;
     }
     #statusText {
       font-weight: bold;
@@ -59,7 +59,7 @@
   <!-- AUTO MODE SECTION -->
   <div id="autoModeDiv">
     <h2>Auto Mode Active</h2>
-    <p>The robot will automatically move toward the object if detected.</p>
+    <p>The robot will automatically move toward the detected object direction.</p>
     <p>Detection Status: <span id="statusText">Unknown</span></p>
   </div>
 
@@ -76,9 +76,8 @@
   <script>
     // 1) Set the ESP32-CAM stream URL:
     const videoStream = document.getElementById("videoStream");
-    // Example local IP or ngrok URL:
+    // Change to your actual ESP32-CAM URL or ngrok URL:
     videoStream.src = "http://192.168.1.10:81/stream"; 
-    // ^^^ CHANGE THIS to your actual ESP32-CAM URL
 
     // 2) Variables for Bluetooth:
     let bluetoothDevice;
@@ -86,14 +85,13 @@
 
     // 3) Auto Mode Control:
     let autoMode = false;
-    let detectionInterval = null;     // Will hold our setInterval ID
-    let lastDetectionStatus = "0";    // Track previous detection to avoid repeated commands
+    let detectionInterval = null;     // Holds our setInterval ID
+    let lastDetectionStatus = "0";      // Store previous detection to avoid repeated commands
     const statusText = document.getElementById("statusText");
 
     // 4) Connect to Bluetooth:
     async function connectBluetooth() {
       try {
-        // Request device that offers HM-10/HC-05 service
         bluetoothDevice = await navigator.bluetooth.requestDevice({
           acceptAllDevices: true,
           optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"]
@@ -125,36 +123,34 @@
       document.getElementById("manualModeDiv").style.display = autoMode ? "none" : "block";
 
       if (autoMode) {
-        // Start periodically checking detection status
-        detectionInterval = setInterval(checkObjectDetection, 2000); // every 2 seconds
+        detectionInterval = setInterval(checkObjectDetection, 2000); // Check every 2 seconds
       } else {
-        // Stop checking detection
         clearInterval(detectionInterval);
         detectionInterval = null;
         statusText.innerText = "N/A";
       }
     }
 
-    // 7) Check if ESP32-CAM detects an object:
+    // 7) Check if ESP32-CAM detects an object and its direction:
     async function checkObjectDetection() {
       try {
-        // "http://<ESP32-CAM-IP>/status" should return "1" if object is detected, otherwise "0"
+        // The /status endpoint should return a direction:
+        // "F" for forward, "L" for left, "R" for right, "0" for no detection.
         const response = await fetch("/status"); 
-        const status = await response.text(); 
-        // Update text on the webpage
-        statusText.innerText = (status === "1") ? "Object Detected" : "No Object Detected";
+        const detection = await response.text(); 
+        // Update status text:
+        statusText.innerText = (detection !== "0") ? detection : "No Object Detected";
 
-        // If object is detected now, but wasn't detected before, trigger a 5s delay => send "GO"
-        if (status === "1" && lastDetectionStatus === "0") {
-          console.log("Object detected, scheduling command in 5 seconds...");
+        // If a new directional detection occurs, schedule sending that command after 5 seconds.
+        if (detection !== "0" && lastDetectionStatus === "0") {
+          console.log("Detected direction", detection, "- scheduling command in 5 seconds...");
           setTimeout(() => {
-            // Double-check we're still in auto mode
             if (autoMode) {
-              sendCommand("GO");
+              sendCommand(detection);
             }
           }, 5000);
         }
-        lastDetectionStatus = status;
+        lastDetectionStatus = detection;
       } catch (error) {
         console.error("Error checking detection:", error);
         statusText.innerText = "Error";
