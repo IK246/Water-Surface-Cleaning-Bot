@@ -33,6 +33,18 @@
     #statusText {
       font-weight: bold;
     }
+    #messageDiv {
+      border: 1px solid #fff;
+      padding: 15px;
+      margin: 20px auto;
+      width: 80%;
+      max-width: 400px;
+      background-color: #222;
+    }
+    #receivedMessages {
+      color: #0f0;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -53,9 +65,16 @@
     <button onclick="sendCommand('S')">Stop</button>
   </div>
 
+  <!-- MESSAGE DISPLAY SECTION -->
+  <div id="messageDiv">
+    <h2>Robot Messages</h2>
+    <p id="receivedMessages">No messages yet...</p>
+  </div>
+
   <script>
     let bluetoothDevice;
     let bluetoothCharacteristic;
+    let bluetoothReader;
 
     async function connectBluetooth() {
       try {
@@ -66,8 +85,13 @@
         const server = await bluetoothDevice.gatt.connect();
         const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
         bluetoothCharacteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
+        
         document.getElementById("statusText").innerText = "Connected";
         alert("Bluetooth connected!");
+
+        // Start receiving messages
+        startReadingMessages();
+
       } catch (error) {
         alert("Bluetooth connection failed: " + error);
       }
@@ -81,6 +105,22 @@
       const encoder = new TextEncoder();
       await bluetoothCharacteristic.writeValue(encoder.encode(cmd));
       console.log("Sent command:", cmd);
+    }
+
+    async function startReadingMessages() {
+      try {
+        bluetoothCharacteristic.startNotifications();
+        bluetoothCharacteristic.addEventListener("characteristicvaluechanged", handleIncomingMessage);
+      } catch (error) {
+        console.error("Error reading messages:", error);
+      }
+    }
+
+    function handleIncomingMessage(event) {
+      const decoder = new TextDecoder();
+      const message = decoder.decode(event.target.value);
+      console.log("Received:", message);
+      document.getElementById("receivedMessages").innerText = message;
     }
   </script>
 
