@@ -11,12 +11,6 @@
       text-align: center;
       margin: 20px;
     }
-    video {
-      width: 80%;
-      max-width: 400px;
-      border: 2px solid #fff;
-      margin-bottom: 20px;
-    }
     button {
       font-size: 16px;
       padding: 10px 20px;
@@ -29,13 +23,12 @@
     button:hover {
       background-color: #555;
     }
-    #autoModeDiv, #manualModeDiv {
+    #manualModeDiv {
       border: 1px solid #fff;
       padding: 15px;
       margin: 10px auto;
       width: 80%;
       max-width: 400px;
-      display: none;
     }
     #statusText {
       font-weight: bold;
@@ -46,26 +39,13 @@
 
   <h1>Water Surface Cleaning Robot</h1>
 
-  <!-- Video Stream from ESP32-CAM -->
-  <video id="videoStream" autoplay></video><br>
-
   <!-- Connect Bluetooth -->
   <button onclick="connectBluetooth()">Connect Bluetooth</button><br><br>
-
-  <!-- Mode Selection -->
-  <button onclick="setAutoMode(true)">Auto Mode</button>
-  <button onclick="setAutoMode(false)">Manual Mode</button>
-
-  <!-- AUTO MODE SECTION -->
-  <div id="autoModeDiv">
-    <h2>Auto Mode Active</h2>
-    <p>The robot will automatically move toward the detected object direction.</p>
-    <p>Detection Status: <span id="statusText">Unknown</span></p>
-  </div>
 
   <!-- MANUAL MODE SECTION -->
   <div id="manualModeDiv">
     <h2>Manual Controls</h2>
+    <p>Bluetooth Status: <span id="statusText">Not Connected</span></p>
     <button onclick="sendCommand('F')">Forward</button>
     <button onclick="sendCommand('B')">Backward</button>
     <button onclick="sendCommand('L')">Left</button>
@@ -74,22 +54,9 @@
   </div>
 
   <script>
-    // 1) Set the ESP32-CAM stream URL:
-    const videoStream = document.getElementById("videoStream");
-    // Change to your actual ESP32-CAM URL or ngrok URL:
-    videoStream.src = "http://192.168.1.10:81/stream"; 
-
-    // 2) Variables for Bluetooth:
     let bluetoothDevice;
     let bluetoothCharacteristic;
 
-    // 3) Auto Mode Control:
-    let autoMode = false;
-    let detectionInterval = null;     // Holds our setInterval ID
-    let lastDetectionStatus = "0";      // Store previous detection to avoid repeated commands
-    const statusText = document.getElementById("statusText");
-
-    // 4) Connect to Bluetooth:
     async function connectBluetooth() {
       try {
         bluetoothDevice = await navigator.bluetooth.requestDevice({
@@ -99,13 +66,13 @@
         const server = await bluetoothDevice.gatt.connect();
         const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
         bluetoothCharacteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
+        document.getElementById("statusText").innerText = "Connected";
         alert("Bluetooth connected!");
       } catch (error) {
         alert("Bluetooth connection failed: " + error);
       }
     }
 
-    // 5) Send a command to the robot via Bluetooth:
     async function sendCommand(cmd) {
       if (!bluetoothCharacteristic) {
         alert("Bluetooth not connected!");
@@ -115,47 +82,7 @@
       await bluetoothCharacteristic.writeValue(encoder.encode(cmd));
       console.log("Sent command:", cmd);
     }
-
-    // 6) Switch between Auto Mode and Manual Mode:
-    function setAutoMode(enable) {
-      autoMode = enable;
-      document.getElementById("autoModeDiv").style.display = autoMode ? "block" : "none";
-      document.getElementById("manualModeDiv").style.display = autoMode ? "none" : "block";
-
-      if (autoMode) {
-        detectionInterval = setInterval(checkObjectDetection, 2000); // Check every 2 seconds
-      } else {
-        clearInterval(detectionInterval);
-        detectionInterval = null;
-        statusText.innerText = "N/A";
-      }
-    }
-
-    // 7) Check if ESP32-CAM detects an object and its direction:
-    async function checkObjectDetection() {
-      try {
-        // The /status endpoint should return a direction:
-        // "F" for forward, "L" for left, "R" for right, "0" for no detection.
-        const response = await fetch("/status"); 
-        const detection = await response.text(); 
-        // Update status text:
-        statusText.innerText = (detection !== "0") ? detection : "No Object Detected";
-
-        // If a new directional detection occurs, schedule sending that command after 5 seconds.
-        if (detection !== "0" && lastDetectionStatus === "0") {
-          console.log("Detected direction", detection, "- scheduling command in 5 seconds...");
-          setTimeout(() => {
-            if (autoMode) {
-              sendCommand(detection);
-            }
-          }, 5000);
-        }
-        lastDetectionStatus = detection;
-      } catch (error) {
-        console.error("Error checking detection:", error);
-        statusText.innerText = "Error";
-      }
-    }
   </script>
+
 </body>
 </html>
