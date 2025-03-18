@@ -10,11 +10,10 @@
       font-family: Arial, sans-serif;
       text-align: center;
       margin: 20px;
-      font-size: 20px; /* Increased font size */
     }
     button {
-      font-size: 20px; /* Bigger buttons */
-      padding: 15px 30px;
+      font-size: 16px;
+      padding: 10px 20px;
       margin: 10px;
       background-color: #333;
       color: #fff;
@@ -26,21 +25,37 @@
     }
     #manualModeDiv, #messageDiv, #robotStatusDiv {
       border: 1px solid #fff;
-      padding: 20px; /* Increased padding */
+      padding: 15px;
       margin: 10px auto;
-      width: 90%; /* Wider divs */
-      max-width: 500px;
+      width: 80%;
+      max-width: 400px;
       background-color: #222;
     }
     #statusText, #robotStatus, #receivedMessages {
       font-weight: bold;
       color: #0f0;
     }
+    .title-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+    .robot-text {
+      font-size: 34px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
-  <h1>Water Surface Cleaning Robot</h1>
+  <div class="title-container">
+    <span>Water Surface Cleaning</span>
+    <span class="robot-text">Robot</span>
+  </div>
 
   <!-- Connect Bluetooth -->
   <button onclick="connectBluetooth()">Connect Bluetooth</button><br><br>
