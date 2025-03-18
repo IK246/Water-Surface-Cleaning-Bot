@@ -43,11 +43,14 @@
       font-size: 28px;
       line-height: 1.2;
       text-transform: uppercase;
-      color: #00bcd4; /* Aqua blue */
+      color: #0088a8; /* Dark Aqua Blue */
     }
     .robot-text {
       font-size: 28px;
       font-weight: normal; /* Removed bold */
+    }
+    .section-title {
+      color: #33eaff; /* Light Aqua Blue */
     }
   </style>
 </head>
@@ -63,7 +66,7 @@
 
   <!-- MANUAL MODE SECTION -->
   <div id="manualModeDiv">
-    <h2>Manual Controls</h2>
+    <h2 class="section-title">Manual Controls</h2>
     <p>Bluetooth Status: <span id="statusText">Not Connected</span></p>
     <button onclick="sendCommand('F')">Forward</button>
     <button onclick="sendCommand('B')">Backward</button>
@@ -74,13 +77,13 @@
 
   <!-- ROBOT STATUS SECTION -->
   <div id="robotStatusDiv">
-    <h2>Robot Movement Status</h2>
+    <h2 class="section-title">Robot Movement Status</h2>
     <p id="robotStatus">Waiting for command...</p>
   </div>
 
   <!-- MESSAGE DISPLAY SECTION -->
   <div id="messageDiv">
-    <h2>Robot Messages</h2>
+    <h2 class="section-title">Robot Messages</h2>
     <p id="receivedMessages">No messages yet...</p>
   </div>
 
