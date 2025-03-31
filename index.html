@@ -1,155 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Water Surface Cleaning Robot</title>
-  <style>
-    body {
-      background-color: #000;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 20px;
-    }
-    button {
-      font-size: 16px;
-      padding: 10px 20px;
-      margin: 10px;
-      background-color: #333;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #555;
-    }
-    #manualModeDiv, #messageDiv, #robotStatusDiv {
-      border: 1px solid #fff;
-      padding: 15px;
-      margin: 10px auto;
-      width: 80%;
-      max-width: 400px;
-      background-color: #222;
-    }
-    #statusText, #robotStatus, #receivedMessages {
-      font-weight: bold;
-      color: #0f0;
-    }
-    .title-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      line-height: 1.2;
-      text-transform: uppercase;
-      color: #33eaff; /* Dark Aqua Blue */
-    }
-    .robot-text {
-      font-size: 28px;
-      font-weight: normal; /* Removed bold */
-    }
-    .section-title {
-      color: #0088a8; /* Light Aqua Blue */
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Control</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        button { font-size: 20px; padding: 10px; margin: 10px; }
+        #log { border: 1px solid #333; padding: 10px; width: 80%; height: 150px; overflow-y: auto; margin: auto; text-align: left; }
+    </style>
 </head>
 <body>
 
-  <div class="title-container">
-    <span>Water Surface Cleaning</span>
-    <span class="robot-text">Robot</span>
-  </div>
+    <h2>Water Cleaning Robot Control</h2>
 
-  <!-- Connect Bluetooth -->
-  <button onclick="connectBluetooth()">Connect Bluetooth</button><br><br>
-
-  <!-- MANUAL MODE SECTION -->
-  <div id="manualModeDiv">
-    <h2 class="section-title">Manual Controls</h2>
-    <p>Bluetooth Status: <span id="statusText">Not Connected</span></p>
+    <button onclick="connectBluetooth()">Connect Bluetooth</button>
+    <br>
     <button onclick="sendCommand('F')">Forward</button>
     <button onclick="sendCommand('B')">Backward</button>
+    <br>
     <button onclick="sendCommand('L')">Left</button>
     <button onclick="sendCommand('R')">Right</button>
+    <br>
     <button onclick="sendCommand('S')">Stop</button>
-  </div>
 
-  <!-- ROBOT STATUS SECTION -->
-  <div id="robotStatusDiv">
-    <h2 class="section-title">Robot Movement Status</h2>
-    <p id="robotStatus">Waiting for command...</p>
-  </div>
+    <h3>Robot Messages</h3>
+    <div id="log"></div>
 
-  <!-- MESSAGE DISPLAY SECTION -->
-  <div id="messageDiv">
-    <h2 class="section-title">Robot Messages</h2>
-    <p id="receivedMessages">No messages yet...</p>
-  </div>
+    <script>
+        let bluetoothDevice;
+        let bluetoothCharacteristic;
 
-  <script>
-    let bluetoothDevice;
-    let bluetoothCharacteristic;
+        async function connectBluetooth() {
+            try {
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['00001101-0000-1000-8000-00805f9b34fb'] // Serial Port Service UUID
+                });
 
-    async function connectBluetooth() {
-      try {
-        bluetoothDevice = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"]
-        });
-        const server = await bluetoothDevice.gatt.connect();
-        const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
-        bluetoothCharacteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
-        
-        document.getElementById("statusText").innerText = "Connected";
-        alert("Bluetooth connected!");
+                const server = await bluetoothDevice.gatt.connect();
+                const service = await server.getPrimaryService('00001101-0000-1000-8000-00805f9b34fb');
+                bluetoothCharacteristic = await service.getCharacteristic('00001101-0000-1000-8000-00805f9b34fb');
 
-        // Start receiving messages
-        startReadingMessages();
+                logMessage("✅ Connected to Bluetooth Module");
 
-      } catch (error) {
-        alert("Bluetooth connection failed: " + error);
-      }
-    }
+                // Start listening for data
+                bluetoothCharacteristic.startNotifications().then(() => {
+                    bluetoothCharacteristic.addEventListener('characteristicvaluechanged', handleData);
+                });
 
-    async function sendCommand(cmd) {
-      if (!bluetoothCharacteristic) {
-        alert("Bluetooth not connected!");
-        return;
-      }
-      const encoder = new TextEncoder();
-      await bluetoothCharacteristic.writeValue(encoder.encode(cmd));
-      console.log("Sent command:", cmd);
+            } catch (error) {
+                logMessage("❌ Bluetooth Connection Failed: " + error);
+            }
+        }
 
-      // Update Robot Movement Status
-      let statusText = "";
-      switch(cmd) {
-        case 'F': statusText = "Moving Forward"; break;
-        case 'B': statusText = "Moving Backward"; break;
-        case 'L': statusText = "Turning Left"; break;
-        case 'R': statusText = "Turning Right"; break;
-        case 'S': statusText = "Stopped"; break;
-        default: statusText = "Unknown Command";
-      }
-      document.getElementById("robotStatus").innerText = statusText;
-    }
+        function sendCommand(command) {
+            if (!bluetoothCharacteristic) {
+                logMessage("❌ Not connected to Bluetooth");
+                return;
+            }
 
-    async function startReadingMessages() {
-      try {
-        bluetoothCharacteristic.startNotifications();
-        bluetoothCharacteristic.addEventListener("characteristicvaluechanged", handleIncomingMessage);
-      } catch (error) {
-        console.error("Error reading messages:", error);
-      }
-    }
+            const data = new TextEncoder().encode(command);
+            bluetoothCharacteristic.writeValue(data)
+                .then(() => logMessage(`📤 Sent: ${command}`))
+                .catch(error => logMessage("❌ Failed to send: " + error));
+        }
 
-    function handleIncomingMessage(event) {
-      const decoder = new TextDecoder();
-      const message = decoder.decode(event.target.value);
-      console.log("Received:", message);
-      document.getElementById("receivedMessages").innerText = message;
-    }
-  </script>
+        function handleData(event) {
+            const value = new TextDecoder().decode(event.target.value);
+            logMessage(`📩 Received: ${value}`);
+        }
+
+        function logMessage(message) {
+            const logDiv = document.getElementById("log");
+            logDiv.innerHTML += message + "<br>";
+            logDiv.scrollTop = logDiv.scrollHeight; // Auto-scroll to the latest message
+        }
+    </script>
 
 </body>
 </html>
