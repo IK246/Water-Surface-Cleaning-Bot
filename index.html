@@ -5,26 +5,127 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Robot Control</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        button { font-size: 20px; padding: 10px; margin: 10px; }
-        #log { border: 1px solid #333; padding: 10px; width: 80%; height: 150px; overflow-y: auto; margin: auto; text-align: left; }
+        /* General Styles */
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            background-color: #000; 
+            color: #0ff; 
+            text-shadow: 0 0 10px #0ff;
+        }
+        
+        h2, h3 { 
+            color: #0ff; 
+            text-shadow: 0 0 15px #0ff, 0 0 30px #00f; 
+        }
+
+        /* Buttons */
+        button {
+            font-size: 20px; 
+            padding: 10px 20px; 
+            margin: 10px;
+            background: transparent;
+            color: #0ff;
+            border: 2px solid #0ff;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+            text-shadow: 0 0 10px #0ff;
+        }
+
+        button:hover {
+            background: #0ff;
+            color: #000;
+            text-shadow: none;
+        }
+
+        /* Log Box */
+        #log {
+            border: 2px solid #0ff;
+            padding: 10px;
+            width: 80%;
+            height: 150px;
+            overflow-y: auto;
+            margin: auto;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0ff;
+            text-shadow: 0 0 10px #0ff;
+        }
+
+        /* Neon Switch */
+        .switch {
+            position: relative; 
+            display: inline-block; 
+            width: 60px; 
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0; 
+            width: 0; 
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 34px;
+            box-shadow: 0 0 10px #0ff;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: #0ff;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #0ff;
+        }
+
+        input:checked + .slider {
+            background-color: #0ff;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
     </style>
 </head>
 <body>
 
-    <h2>Water Cleaning Robot Control</h2>
+    <h2>🚀 Water Cleaning Robot Control 🚀</h2>
 
-    <button onclick="connectBluetooth()">Connect Bluetooth</button>
-    <br>
-    <button onclick="sendCommand('F')">Forward</button>
-    <button onclick="sendCommand('B')">Backward</button>
-    <br>
-    <button onclick="sendCommand('L')">Left</button>
-    <button onclick="sendCommand('R')">Right</button>
-    <br>
-    <button onclick="sendCommand('S')">Stop</button>
+    <button onclick="connectBluetooth()">🔗 Connect Bluetooth</button>
+    
+    <h3>Mode Selection</h3>
+    <label class="switch">
+        <input type="checkbox" id="modeSwitch" onchange="toggleMode()">
+        <span class="slider"></span>
+    </label>
+    <p id="modeText">Manual Mode</p>
 
-    <h3>Robot Messages</h3>
+    <br>
+    <button onclick="sendCommand('F')">⬆️ Forward</button>
+    <button onclick="sendCommand('B')">⬇️ Backward</button>
+    <br>
+    <button onclick="sendCommand('L')">⬅️ Left</button>
+    <button onclick="sendCommand('R')">➡️ Right</button>
+    <br>
+    <button onclick="sendCommand('S')">🛑 Stop</button>
+
+    <h3>💬 Robot Messages</h3>
     <div id="log"></div>
 
     <script>
@@ -35,7 +136,7 @@
             try {
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: ['00001101-0000-1000-8000-00805f9b34fb'] // Serial Port Service UUID
+                    optionalServices: ['00001101-0000-1000-8000-00805f9b34fb']
                 });
 
                 const server = await bluetoothDevice.gatt.connect();
@@ -44,7 +145,6 @@
 
                 logMessage("✅ Connected to Bluetooth Module");
 
-                // Start listening for data
                 bluetoothCharacteristic.startNotifications().then(() => {
                     bluetoothCharacteristic.addEventListener('characteristicvaluechanged', handleData);
                 });
@@ -71,10 +171,25 @@
             logMessage(`📩 Received: ${value}`);
         }
 
+        function toggleMode() {
+            let modeSwitch = document.getElementById("modeSwitch");
+            let modeText = document.getElementById("modeText");
+
+            if (modeSwitch.checked) {
+                modeText.innerText = "🌟 Automatic Mode";
+                sendCommand('A');
+                logMessage("🔄 Switched to Automatic Mode");
+            } else {
+                modeText.innerText = "🎮 Manual Mode";
+                sendCommand('M');
+                logMessage("🔄 Switched to Manual Mode");
+            }
+        }
+
         function logMessage(message) {
             const logDiv = document.getElementById("log");
             logDiv.innerHTML += message + "<br>";
-            logDiv.scrollTop = logDiv.scrollHeight; // Auto-scroll to the latest message
+            logDiv.scrollTop = logDiv.scrollHeight;
         }
     </script>
 
